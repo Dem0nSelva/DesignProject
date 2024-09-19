@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Reddit Sentiment Analysis</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #2e2e2e;
+            color: #ffffff;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+        h1 {
+            color: #ffffff;
+            font-size: 2.5em;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        form {
+            background-color: #1c1c1c;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            padding: 20px 30px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        input, button {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 1em;
+            color: #000000;
+        }
+        input {
+            background-color: #ffffff;
+        }
+        button {
+            background-color: #ff9800;
+            color: #ffffff;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #e65100;
+        }
+        .chart-container {
+            width: 70%;
+            margin-top: 40px;
+            background-color: #1c1c1c;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            padding: 20px;
+        }
+        @media (max-width: 768px) {
+            .chart-container {
+                width: 90%;
+            }
+            h1 {
+                font-size: 2em;
+            }
+        }
+
+        /* Chatbot styling */
+        .chatbot-bar {
+            position: fixed;
+            top: 50%;
+            right: 0;
+            width: 50px;
+            height: 100px;
+            background-color: #ff9800;
+            border-radius: 10px 0 0 10px;
+            cursor: pointer;
+            transform: translateY(-50%);
+            transition: width 0.3s;
+        }
+
+        .chatbot {
+            position: fixed;
+            top: 0;
+            right: -300px;
+            width: 300px;
+            height: 100vh;
+            background-color: #1c1c1c;
+            border-left: 2px solid #ff9800;
+            transition: right 0.3s;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .chatbot.open {
+            right: 0;
+        }
+
+        .chatbot-header {
+            padding: 10px;
+            background-color: #ff9800;
+            color: #ffffff;
+            text-align: center;
+            font-size: 1.2em;
+        }
+
+        .chatbot-messages {
+            flex-grow: 1;
+            padding: 10px;
+            overflow-y: auto;
+            color: #ffffff;
+        }
+
+        .chatbot-input {
+            display: flex;
+            padding: 10px;
+            border-top: 1px solid #ff9800;
+        }
+
+        .chatbot-input input {
+            flex-grow: 1;
+            padding: 10px;
+            background-color: #ffffff;
+            color: #000000;
+            border: none;
+            border-radius: 4px;
+        }
+
+        .chatbot-input button {
+            padding: 10px;
+            margin-left: 10px;
+            background-color: #ff9800;
+            color: #ffffff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>Reddit Comments Sentiment Analysis</h1>
+    <form id="form">
+        <input type="text" id="post_id" name="post_id" placeholder="Enter Reddit Post ID" required>
+        <button type="submit">Analyze</button>
+    </form>
+
+    <div class="chart-container">
+        <h2 style="color:#ffffff;">Comments Sentiment Analysis</h2>
+        <canvas id="commentsLineChart"></canvas>
+    </div>
+
+    <!-- Chatbot -->
+    <div class="chatbot-bar" id="chatbotBar"></div>
+    <div class="chatbot" id="chatbot">
+        <div class="chatbot-header">Chat with Us!</div>
+        <div class="chatbot-messages" id="chatbotMessages">
+            <!-- Messages will appear here -->
+        </div>
+        <div class="chatbot-input">
+            <input type="text" id="chatbotInput" placeholder="Type a message...">
+            <button id="chatbotSend">Send</button>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('form').addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const postId = document.getElementById('post_id').value;
+            const response = await fetch('/get_post_and_comments', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ post_id: postId }),
+            });
+            const data = await response.json();
+
+            if (data.error) {
+                alert(data.error);
+                return;
+            }
+
+            const sentimentResponse = await fetch('/analyze', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ post: data.post, comments: data.comments }),
+            });
+            const sentimentData = await sentimentResponse.json();
+
+            if (sentimentData.error) {
+                alert(sentimentData.error);
+                return;
+            }
+
+            renderLineChart('commentsLineChart', sentimentData.comments_sentiment);
+        });
+
+        function renderLineChart(canvasId, data) {
+            const ctx = document.getElementById(canvasId).getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['Positive', 'Neutral', 'Negative'],
+                    datasets: [{
+                        label: 'Sentiment',
+                        data: [data.pos, data.neu, data.neg],
+                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                        borderColor: '#ffffff',
+                        fill: true,
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            color: '#ffffff',
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.2)'
+                            }
+                        },
+                        x: {
+                            color: '#ffffff',
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.2)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#ffffff'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Chatbot functionality
+        const chatbotBar = document.getElementById('chatbotBar');
+        const chatbot = document.getElementById('chatbot');
+
+        chatbotBar.addEventListener('mouseenter', () => {
+            chatbot.classList.add('open');
+        });
+
+        chatbot.addEventListener('mouseleave', () => {
+            chatbot.classList.remove('open');
+        });
+
+        document.getElementById('chatbotSend').addEventListener('click', () => {
+            const input = document.getElementById('chatbotInput');
+            const message = input.value.trim();
+
+            if (message) {
+                const messageContainer = document.createElement('div');
+                messageContainer.textContent = message;
+                document.getElementById('chatbotMessages').appendChild(messageContainer);
+                input.value = '';
+            }
+        });
+    </script>
+</body>
+</html>
