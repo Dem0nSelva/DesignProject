@@ -22,5 +22,3 @@ Step 5: Run the Application
     In the terminal, execute the following command to start the Streamlit application:
 
     streamlit run app.py
-
-    s
