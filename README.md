@@ -1,11 +1,24 @@
-# DesignProject
+Design Project Setup Instructions
+Step 1: Download the Zip File
 
-step 1: download the zip file from the link
+    Download the project zip file from the provided link.
 
-step 2 : unzip and put it in the respective folder
+Step 2: Unzip and Organize
 
-step 3 : open the folder in python IDE such as pycharm
+    Extract the contents of the zip file.
+    Place the extracted folder in your desired directory.
 
-step 4 : after opening in Python IDE (pycharm),open terminal
+Step 3: Open the Folder in a Python IDE
 
-step 5: run the comment on terminal -> "streamlit run app.py"
+    Launch your preferred Python IDE (e.g., PyCharm).
+    Open the project folder within the IDE.
+
+Step 4: Open the Terminal
+
+    After the project is loaded in PyCharm, open the terminal window from the IDE.
+
+Step 5: Run the Application
+
+    In the terminal, execute the following command to start the Streamlit application:
+
+--> "streamlit run app.py"
